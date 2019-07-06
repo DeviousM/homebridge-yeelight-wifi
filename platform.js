@@ -105,13 +105,13 @@ class YeePlatform {
       mixins.push(Brightness(props));
     }
 
-    if (features.includes("set_hsv")) {
-      this.log(`device ${accessory.displayName} supports color`);
-      mixins.push(Color(props));
-    }
+    // if (features.includes("set_hsv")) {
+    //   this.log(`device ${accessory.displayName} supports color`);
+    // mixins.push(Color(props));
+    // }
 
     // HomeKit specification does not allow temperature for color bulbs
-    if (features.includes("set_ct_abx") && !features.includes("set_hsv")) {
+    if (features.includes("set_ct_abx")) {
       this.log(`device ${accessory.displayName} supports color temperature`);
       mixins.push(Temperature(props));
     }
