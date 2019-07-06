@@ -111,7 +111,7 @@ class YeePlatform {
     }
 
     // HomeKit specification does not allow temperature for color bulbs
-    if (features.includes("set_ct_abx")) {
+    if (features.includes("set_ct_abx") && !features.includes("set_hsv")) {
       this.log(`device ${accessory.displayName} supports color temperature`);
       mixins.push(Temperature(props));
     }
@@ -127,3 +127,26 @@ class YeePlatform {
 }
 
 module.exports = YeePlatform;
+
+// [
+//   "get_prop",
+//   "set_default",
+//   "set_power",
+//   "toggle",
+//   "set_bright",
+//   "start_cf",
+//   "stop_cf",
+//   "set_scene",
+//   "cron_add",
+//   "cron_get",
+//   "cron_del",
+//   "set_ct_abx",
+//   "set_rgb",
+//   "set_hsv",
+//   "set_adjust",
+//   "adjust_bright",
+//   "adjust_ct",
+//   "adjust_color",
+//   "set_music",
+//   "set_name"
+// ];
