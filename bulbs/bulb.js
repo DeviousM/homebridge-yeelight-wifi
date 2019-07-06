@@ -1,5 +1,5 @@
-const net = require('net');
-const { id, name, handle } = require('../utils');
+const net = require("net");
+const { id, name, handle } = require("../utils");
 
 class YeeBulb {
   constructor(did, model, platform) {
@@ -21,7 +21,7 @@ class YeeBulb {
   }
 
   set endpoint(endpoint) {
-    const [host, port] = endpoint.split(':');
+    const [host, port] = endpoint.split(":");
     this.host = host;
     this.port = Number(port);
   }
@@ -31,12 +31,14 @@ class YeeBulb {
   }
 
   set power(state) {
-    this._power = (state === 'on') ? 1 : 0;
+    this._power = state === "on" ? 1 : 0;
   }
 
   updateStateFromProp(prop, value) {
-    if (prop !== 'power') {
-      this.log(`${prop} is not supported in Homekit, skipping.`);
+    if (prop !== "power") {
+      this.log(
+        `${prop} with value ${value} is not supported in Homekit, skipping.`
+      );
       return;
     }
     this.power = value;
@@ -49,17 +51,15 @@ class YeeBulb {
     if (this.power === power) {
       return Promise.resolve(power);
     }
-    const { power: transition = 400 } = this.config.transitions || {};
-    const state = power ? 'on' : 'off';
+    const { power: transition = 300 } = this.config.transitions || {};
+    const state = power ? "on" : "off";
     const req = {
-      method: 'set_power',
-      params: [
-        state,
-        'smooth',
-        transition,
-      ],
+      method: "set_power",
+      params: [state, "smooth", transition]
     };
-    return this.sendCmd(req).then(() => { this._power = power; });
+    return this.sendCmd(req).then(() => {
+      this._power = power;
+    });
   }
 
   connect() {
@@ -74,32 +74,31 @@ class YeeBulb {
         resolve();
       });
 
-      this.sock.on('data', handle([
-        this.responseHandler.bind(this),
-        this.stateHandler.bind(this),
-      ]));
+      this.sock.on(
+        "data",
+        handle([this.responseHandler.bind(this), this.stateHandler.bind(this)])
+      );
 
-      this.sock.on('error', (error) => {
-        this.log('error', `${this.host}: ${error.message}.`);
+      this.sock.on("error", error => {
+        this.log("error", `${this.host}: ${error.message}.`);
         reject(error.code);
       });
 
-      this.sock.on('close', (hadError) => {
-        this.log('warn', `${this.host} closed. error? ${hadError}.`);
+      this.sock.on("close", hadError => {
+        this.log("warn", `${this.host} closed. error? ${hadError}.`);
         this.cmds = {};
         reject(new Error(`close: error? ${hadError}`));
       });
     });
   }
 
-
   getProperty(properties) {
-    const req = { method: 'get_prop', params: properties };
+    const req = { method: "get_prop", params: properties };
     return this.sendCmd(req);
   }
 
   identify() {
-    const req = { method: 'toggle', params: [] };
+    const req = { method: "toggle", params: [] };
     return this.sendCmd(req);
   }
 
@@ -113,19 +112,23 @@ class YeeBulb {
         // eslint-disable-next-line no-await-in-loop
         return await this._sendCmd(cmd, t);
       } catch (err) {
-        this.log('warn', `failed attempt ${i} after ${t}ms.`);
-        if (err === 'EHOSTUNREACH') break;
+        this.log("warn", `failed attempt ${i} after ${t}ms.`);
+        if (err === "EHOSTUNREACH") break;
       }
     }
     this.sock.destroy();
-    this.log('error', `failed to send cmd ${cmd.id} after ${retries} retries.`);
+    this.log("error", `failed to send cmd ${cmd.id} after ${retries} retries.`);
     return Promise.reject(new Error(`${cmd.id}`));
   }
 
   _sendCmd(cmd, duration) {
     return new Promise(async (resolve, reject) => {
       if (!this.sock || this.sock.destroyed) {
-        try { await this.connect(); } catch (err) { reject(err); }
+        try {
+          await this.connect();
+        } catch (err) {
+          reject(err);
+        }
       }
       const msg = JSON.stringify(cmd);
       const timeout = setTimeout(() => {
@@ -139,20 +142,20 @@ class YeeBulb {
   }
 
   responseHandler(message) {
-    if (!('id' in message)) return false;
+    if (!("id" in message)) return false;
     if (!(message.id in this.cmds)) return true;
 
     const cmd = this.cmds[message.id];
     clearTimeout(cmd.timeout);
 
-    if ('result' in message) {
+    if ("result" in message) {
       this.log(message);
       cmd.resolve(message.result);
-    } else if ('error' in message) {
-      this.log('error', message);
+    } else if ("error" in message) {
+      this.log("error", message);
       cmd.reject(message.error.message);
     } else {
-      this.log('error', `unexpected result from ${this.host}: ${message}`);
+      this.log("error", `unexpected result from ${this.host}: ${message}`);
       cmd.reject(message.error.message);
     }
     delete this.cmds[message.id];
@@ -160,10 +163,10 @@ class YeeBulb {
   }
 
   stateHandler(message) {
-    if (!('method' in message && message.method === 'props')) {
+    if (!("method" in message && message.method === "props")) {
       return false;
     }
-    Object.keys(message.params).forEach((param) => {
+    Object.keys(message.params).forEach(param => {
       this.updateStateFromProp(param, message.params[param]);
     });
     return true;
@@ -172,36 +175,41 @@ class YeeBulb {
   configureServices() {
     const deviceId = this.did.slice(-6);
     const deviceName = name(deviceId, this.config);
-    this.accessory.getService(global.Service.AccessoryInformation)
-      .setCharacteristic(global.Characteristic.Manufacturer, 'YeeLight')
+    this.accessory
+      .getService(global.Service.AccessoryInformation)
+      .setCharacteristic(global.Characteristic.Manufacturer, "YeeLight")
       .setCharacteristic(global.Characteristic.Model, this.model)
       .setCharacteristic(global.Characteristic.SerialNumber, this.host);
 
-    this.service = this.accessory.getService(global.Service.Lightbulb)
-      || this.accessory.addService(new global.Service.Lightbulb(deviceName));
+    this.service =
+      this.accessory.getService(global.Service.Lightbulb) ||
+      this.accessory.addService(new global.Service.Lightbulb(deviceName));
 
-    this.accessory.on('identify', async (_, callback) => {
+    this.accessory.on("identify", async (_, callback) => {
       await this.identify();
       callback();
     });
 
-    this.service.getCharacteristic(global.Characteristic.On)
-      .on('set', async (value, callback) => {
+    this.service
+      .getCharacteristic(global.Characteristic.On)
+      .on("set", async (value, callback) => {
         try {
           await this.setPower(value);
           callback(null, value);
         } catch (err) {
           callback(err, this.power);
         }
-      }).on('get', async (callback) => {
+      })
+      .on("get", async callback => {
         try {
-          const [value] = await this.getProperty(['power']);
+          const [value] = await this.getProperty(["power"]);
           this.power = value;
           callback(null, this.power);
         } catch (err) {
           callback(err, this.power);
         }
-      }).updateValue(this.power);
+      })
+      .updateValue(this.power);
   }
 }
 

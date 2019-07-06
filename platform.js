@@ -98,6 +98,8 @@ class YeePlatform {
 
     if (accessory.reachable) return;
 
+    this.log(`supported features ${JSON.stringify(features)}`);
+
     if (features.includes("set_bright")) {
       this.log(`device ${accessory.displayName} supports brightness`);
       mixins.push(Brightness(props));
